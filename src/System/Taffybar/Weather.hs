@@ -76,6 +76,8 @@ import Graphics.UI.Gtk
 import Text.Parsec
 import Text.Printf
 import Text.StringTemplate
+import Text.JSON
+import Text.JSON.Types
 
 import System.Taffybar.Widgets.PollingLabel
 
@@ -277,7 +279,7 @@ weatherNew :: WeatherConfig -- ^ Configuration to render
               -> Double     -- ^ Polling period in _minutes_
               -> IO Widget
 weatherNew cfg delayMinutes = do
-  let url = printf "%s/%s.TXT" baseUrl (weatherStation cfg)
+  let url = printf "%s/%s.json" baseUrl (weatherStation cfg)
       tpl' = newSTMP (weatherTemplate cfg)
 
   l <- pollingLabelNew "N/A" (delayMinutes * 60) (getCurrentWeather url tpl' cfg)
