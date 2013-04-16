@@ -111,7 +111,7 @@ pTime = do
   _ <- char ' '
   (h:hh:mi:mimi) <- getNumbersAsString
   _ <- char ' '
-  return (y, m, d ,([h]++[hh]++":"++[mi]++mimi))
+  return (y, m, d ,[h]++[hh]++":"++[mi]++mimi)
 
 pTemp :: Parser (Int, Int)
 pTemp = do
@@ -120,11 +120,11 @@ pTemp = do
   _ <- manyTill anyChar $ char '('
   c <- manyTill num $ char ' '
   _ <- skipRestOfLine
-  return $ (floor (read c :: Double), floor (read f :: Double))
+  return (floor (read c :: Double), floor (read f :: Double))
 
 pRh :: Parser Int
 pRh = do
-  s <- manyTill digit $ (char '%' <|> char '.')
+  s <- manyTill digit (char '%' <|> char '.')
   return $ read s
 
 pPressure :: Parser Int
@@ -235,7 +235,7 @@ getCurrentWeather :: String -> StringTemplate String -> WeatherConfig -> IO Stri
 getCurrentWeather url tpl cfg = do
   dat <- getWeather url
   case dat of
-    Right wi -> do
+    Right wi ->
       case weatherFormatter cfg of
         DefaultWeatherFormatter -> return (defaultFormatter tpl wi)
         WeatherFormatter f -> return (f wi)
@@ -246,6 +246,7 @@ getCurrentWeather url tpl cfg = do
 -- | The NOAA URL to get data from
 baseUrl :: String
 baseUrl = "http://weather.noaa.gov/pub/data/observations/metar/decoded"
+{-baseUrl = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q/"-}
 
 -- | A wrapper to allow users to specify a custom weather formatter.
 -- The default interpolates variables into a string as described
