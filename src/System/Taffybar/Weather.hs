@@ -98,6 +98,29 @@ data WeatherInfo =
        , pressure     :: Int
        } deriving (Show)
 
+data DisplayLocation =
+  DisplayLocation { full    :: String
+                  , city    :: String
+                  , state   :: String
+                  , country :: String
+                  } deriving (Show)
+
+data Weather =
+  Weather { display_location  :: DisplayLocation
+          , observation_time  :: String
+          , temp_f            :: Float
+          , temp_c            :: Float
+          , wind_string       :: String
+          , pressure_mb       :: String
+          , pressure_in       :: String
+          , pressure_trend    :: String
+          , relative_humidity :: String
+          } deriving (Show)
+
+grab o s = case get_field o s of
+                Nothing            -> error "Invalid field " ++ show s
+                Just (JSString s') -> fromJSString s'
+
 
 -- Parsers stolen from xmobar
 
@@ -279,7 +302,7 @@ weatherNew :: WeatherConfig -- ^ Configuration to render
               -> Double     -- ^ Polling period in _minutes_
               -> IO Widget
 weatherNew cfg delayMinutes = do
-  let url = printf "%s/%s.json" baseUrl (weatherStation cfg)
+  let url = printf "%s/%s.TXT" baseUrl (weatherStation cfg)
       tpl' = newSTMP (weatherTemplate cfg)
 
   l <- pollingLabelNew "N/A" (delayMinutes * 60) (getCurrentWeather url tpl' cfg)
