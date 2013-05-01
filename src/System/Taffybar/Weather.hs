@@ -117,6 +117,9 @@ data Weather =
           , relative_humidity :: String
           } deriving (Show)
 
+instance FromJSON Weather where
+  parseJSON (Object v) = mzero
+
 grab o s = case get_field o s of
                 Nothing            -> error "Invalid field " ++ show s
                 Just (JSString s') -> fromJSString s'
