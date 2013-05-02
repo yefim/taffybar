@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This module defines a simple textual weather widget that polls
 -- NOAA for weather data.  To find your weather station, you can use
 --
@@ -76,6 +77,9 @@ import Graphics.UI.Gtk
 import Text.Parsec
 import Text.Printf
 import Text.StringTemplate
+import Data.Aeson
+import Control.Applicative ((<$>), (<*>))
+import qualified Data.ByteString.Lazy.Char8 as BS
 
 import System.Taffybar.Widgets.PollingLabel
 
@@ -96,6 +100,34 @@ data WeatherInfo =
        , pressure     :: Int
        } deriving (Show)
 
+data Weather =
+  Weather { observation_time  :: String
+          , temp_f            :: Float
+          , temp_c            :: Float
+          , wind_dir          :: String
+          , wind_degrees      :: Integer
+          , wind_mph          :: Integer
+          --, wind_gust_mph     :: Integer
+          --, wind_kph          :: Integer
+          --, wind_gusr_kph     :: Integer
+          --, pressure_mb       :: String
+          --, pressure_in       :: String
+          --, pressure_trend    :: String
+          --, relative_humidity :: String
+          } deriving (Show)
+
+instance FromJSON Weather where
+  parseJSON (Object v) =
+    Weather <$>
+    ((v .: "current_observation") >>= (.: "observation_time")) <*>
+    ((v .: "current_observation") >>= (.: "temp_f")) <*>
+    ((v .: "current_observation") >>= (.: "temp_c")) <*>
+    ((v .: "current_observation") >>= (.: "wind_dir")) <*>
+    ((v .: "current_observation") >>= (.: "wind_degrees")) <*>
+    ((v .: "current_observation") >>= (.: "wind_mph"))
+    --((v .: "current_observation") >>= (.: "wind_gust_mph")) <*>
+    --((v .: "current_observation") >>= (.: "wind_kph")) <*>
+    --((v .: "current_observation") >>= (.: "wind_gust_kph"))
 
 -- Parsers stolen from xmobar
 
@@ -203,6 +235,15 @@ downloadURL url = do
                       }
     Just uri = parseURI url
 
+getWeatherJSON :: String -> IO (Either String Weather)
+getWeatherJSON url = do
+  dat <- downloadURL url
+  case dat of
+    Right dat' -> case decode (BS.pack dat') of
+      Just d -> return (Right d)
+      Nothing -> return (Left "Decoding JSON failed.")
+    Left err -> return (Left (show err))
+
 getWeather :: String -> IO (Either String WeatherInfo)
 getWeather url = do
   dat <- downloadURL url
@@ -246,7 +287,8 @@ getCurrentWeather url tpl cfg = do
 -- | The NOAA URL to get data from
 baseUrl :: String
 baseUrl = "http://weather.noaa.gov/pub/data/observations/metar/decoded"
-{-baseUrl = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q/"-}
+
+wunderground = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q/PA/Philadelphia.json"
 
 -- | A wrapper to allow users to specify a custom weather formatter.
 -- The default interpolates variables into a string as described
