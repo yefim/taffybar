@@ -76,8 +76,6 @@ import Graphics.UI.Gtk
 import Text.Parsec
 import Text.Printf
 import Text.StringTemplate
-import Text.JSON
-import Text.JSON.Types
 
 import System.Taffybar.Widgets.PollingLabel
 
@@ -97,32 +95,6 @@ data WeatherInfo =
        , humidity     :: Int
        , pressure     :: Int
        } deriving (Show)
-
-data DisplayLocation =
-  DisplayLocation { full    :: String
-                  , city    :: String
-                  , state   :: String
-                  , country :: String
-                  } deriving (Show)
-
-data Weather =
-  Weather { display_location  :: DisplayLocation
-          , observation_time  :: String
-          , temp_f            :: Float
-          , temp_c            :: Float
-          , wind_string       :: String
-          , pressure_mb       :: String
-          , pressure_in       :: String
-          , pressure_trend    :: String
-          , relative_humidity :: String
-          } deriving (Show)
-
-instance FromJSON Weather where
-  parseJSON (Object v) = mzero
-
-grab o s = case get_field o s of
-                Nothing            -> error "Invalid field " ++ show s
-                Just (JSString s') -> fromJSString s'
 
 
 -- Parsers stolen from xmobar
@@ -299,6 +271,15 @@ defaultWeatherConfig station = WeatherConfig { weatherStation = station
                                              , weatherTemplate = "$tempF$ °F"
                                              , weatherFormatter = DefaultWeatherFormatter
                                              }
+
+w = defaultWeatherConfig "KMSN"
+
+test :: IO ()
+test = do
+  let url = printf "%s/%s.TXT" baseUrl (weatherStation w)
+      tpl' = newSTMP (weatherTemplate w)
+  l <- getCurrentWeather url tpl' w
+  putStrLn l
 
 -- | Create a periodically-updating weather widget that polls NOAA.
 weatherNew :: WeatherConfig -- ^ Configuration to render
