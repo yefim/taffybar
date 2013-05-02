@@ -101,33 +101,50 @@ data WeatherInfo =
        } deriving (Show)
 
 data Weather =
-  Weather { observation_time  :: String
+  Weather { city              :: String
+          , state             :: String
+          , observation_time  :: String
           , temp_f            :: Float
           , temp_c            :: Float
+          , weather           :: String
+          , relative_humidity :: String
           , wind_dir          :: String
           , wind_degrees      :: Integer
-          , wind_mph          :: Integer
-          --, wind_gust_mph     :: Integer
-          --, wind_kph          :: Integer
-          --, wind_gusr_kph     :: Integer
-          --, pressure_mb       :: String
-          --, pressure_in       :: String
-          --, pressure_trend    :: String
-          --, relative_humidity :: String
+          , wind_mph          :: Float
+          , wind_gust_mph     :: Integer
+          , wind_kph          :: Float
+          , wind_gust_kph     :: Integer
+          , dewpoint_string   :: String
+          , pressure_mb       :: String
+          , pressure_in       :: String
+          , visibility_mi     :: String
+          , visibility_km     :: String
           } deriving (Show)
+
+--WeatherToWI :: Weather -> WeatherInfo
+--WeatherToWI (Weather c s o_t )
 
 instance FromJSON Weather where
   parseJSON (Object v) =
     Weather <$>
+    ((v .: "current_observation") >>= (.: "display_location") >>= (.: "city")) <*>
+    ((v .: "current_observation") >>= (.: "display_location") >>= (.: "state")) <*>
     ((v .: "current_observation") >>= (.: "observation_time")) <*>
     ((v .: "current_observation") >>= (.: "temp_f")) <*>
     ((v .: "current_observation") >>= (.: "temp_c")) <*>
+    ((v .: "current_observation") >>= (.: "weather")) <*>
+    ((v .: "current_observation") >>= (.: "relative_humidity")) <*>
     ((v .: "current_observation") >>= (.: "wind_dir")) <*>
     ((v .: "current_observation") >>= (.: "wind_degrees")) <*>
-    ((v .: "current_observation") >>= (.: "wind_mph"))
-    --((v .: "current_observation") >>= (.: "wind_gust_mph")) <*>
-    --((v .: "current_observation") >>= (.: "wind_kph")) <*>
-    --((v .: "current_observation") >>= (.: "wind_gust_kph"))
+    ((v .: "current_observation") >>= (.: "wind_mph")) <*>
+    ((v .: "current_observation") >>= (.: "wind_gust_mph")) <*>
+    ((v .: "current_observation") >>= (.: "wind_kph")) <*>
+    ((v .: "current_observation") >>= (.: "wind_gust_kph")) <*>
+    ((v .: "current_observation") >>= (.: "dewpoint_string")) <*>
+    ((v .: "current_observation") >>= (.: "pressure_mb")) <*>
+    ((v .: "current_observation") >>= (.: "pressure_in")) <*>
+    ((v .: "current_observation") >>= (.: "visibility_mi")) <*>
+    ((v .: "current_observation") >>= (.: "visibility_km"))
 
 -- Parsers stolen from xmobar
 
