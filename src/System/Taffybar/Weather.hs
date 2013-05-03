@@ -151,19 +151,19 @@ weatherToWI w =
 instance FromJSON Weather where
   parseJSON (Object v) =
     Weather <$>
-    ((v .: "current_observation") >>= (.: "display_location") >>= (.: "city")) <*>
+    ((v .: "current_observation") >>= (.: "display_location") >>= (.: "city"))  <*>
     ((v .: "current_observation") >>= (.: "display_location") >>= (.: "state")) <*>
-    ((v .: "current_observation") >>= (.: "local_epoch")) <*>
-    ((v .: "current_observation") >>= (.: "temp_f")) <*>
-    ((v .: "current_observation") >>= (.: "temp_c")) <*>
-    ((v .: "current_observation") >>= (.: "weather")) <*>
-    ((v .: "current_observation") >>= (.: "relative_humidity")) <*>
-    ((v .: "current_observation") >>= (.: "wind_dir")) <*>
-    ((v .: "current_observation") >>= (.: "wind_degrees")) <*>
-    ((v .: "current_observation") >>= (.: "wind_mph")) <*>
-    ((v .: "current_observation") >>= (.: "dewpoint_string")) <*>
-    ((v .: "current_observation") >>= (.: "pressure_mb")) <*>
-    ((v .: "current_observation") >>= (.: "pressure_in")) <*>
+    ((v .: "current_observation") >>= (.: "local_epoch"))                       <*>
+    ((v .: "current_observation") >>= (.: "temp_f"))                            <*>
+    ((v .: "current_observation") >>= (.: "temp_c"))                            <*>
+    ((v .: "current_observation") >>= (.: "weather"))                           <*>
+    ((v .: "current_observation") >>= (.: "relative_humidity"))                 <*>
+    ((v .: "current_observation") >>= (.: "wind_dir"))                          <*>
+    ((v .: "current_observation") >>= (.: "wind_degrees"))                      <*>
+    ((v .: "current_observation") >>= (.: "wind_mph"))                          <*>
+    ((v .: "current_observation") >>= (.: "dewpoint_string"))                   <*>
+    ((v .: "current_observation") >>= (.: "pressure_mb"))                       <*>
+    ((v .: "current_observation") >>= (.: "pressure_in"))                       <*>
     ((v .: "current_observation") >>= (.: "visibility_mi"))
 
 
