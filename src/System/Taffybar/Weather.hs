@@ -79,9 +79,17 @@ import Text.Printf
 import Text.StringTemplate
 import Data.Aeson
 import Control.Applicative ((<$>), (<*>))
+import Data.Convertible (convert)
+import System.Posix.Types (EpochTime(..))
+import Data.Time.Clock (UTCTime(..))
+import Data.Time.Format
+import System.Locale
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 import System.Taffybar.Widgets.PollingLabel
+
+toUTC :: EpochTime -> UTCTime
+toUTC = convert
 
 data WeatherInfo =
     WI { stationPlace :: String
@@ -111,19 +119,34 @@ data Weather =
           , wind_dir          :: String
           , wind_degrees      :: Integer
           , wind_mph          :: Float
-          , wind_gust_mph     :: Integer
-          , wind_kph          :: Float
-          , wind_gust_kph     :: Integer
           , dewpoint_string   :: String
           , pressure_mb       :: String
           , pressure_in       :: String
           , visibility_mi     :: String
-          , visibility_km     :: String
           } deriving (Show)
 
 weatherToWI :: Weather -> WeatherInfo
-weatherToWI (Weather c st l_e t_f t_c wthr r_h w_d w_deg w_m w_g_m w_k w_g_k dew p_m p_i v_m v_k) =
-             WI c st l_e l_e l_e l_e l_e v_m wthr (round t_c) (round t_f) dew (read $ init r_h) (round $ read p_i)
+weatherToWI w =
+  let utc = toUTC $ read (local_epoch w) in
+  let year = formatTime defaultTimeLocale "%Y" utc in
+  let month = formatTime defaultTimeLocale "%m" utc in
+  let day = formatTime defaultTimeLocale "%d" utc in
+  let hour = formatTime defaultTimeLocale "%H" utc in
+  WI
+   (city w)
+   (state w)
+   (year)
+   (month)
+   (day)
+   (hour)
+   ("from the " ++ wind_dir w ++ " (" ++ (show (wind_degrees w)) ++ " degrees) at " ++ show (wind_mph w) ++ " MPH")
+   ("about " ++ visibility_mi w ++ " miles")
+   (weather w)
+   (round $ temp_c w)
+   (round $ temp_f w)
+   (dewpoint_string w)
+   (read $ init (relative_humidity w))
+   (round $ read (pressure_in w))
 
 instance FromJSON Weather where
   parseJSON (Object v) =
@@ -138,14 +161,10 @@ instance FromJSON Weather where
     ((v .: "current_observation") >>= (.: "wind_dir")) <*>
     ((v .: "current_observation") >>= (.: "wind_degrees")) <*>
     ((v .: "current_observation") >>= (.: "wind_mph")) <*>
-    ((v .: "current_observation") >>= (.: "wind_gust_mph")) <*>
-    ((v .: "current_observation") >>= (.: "wind_kph")) <*>
-    ((v .: "current_observation") >>= (.: "wind_gust_kph")) <*>
     ((v .: "current_observation") >>= (.: "dewpoint_string")) <*>
     ((v .: "current_observation") >>= (.: "pressure_mb")) <*>
     ((v .: "current_observation") >>= (.: "pressure_in")) <*>
-    ((v .: "current_observation") >>= (.: "visibility_mi")) <*>
-    ((v .: "current_observation") >>= (.: "visibility_km"))
+    ((v .: "current_observation") >>= (.: "visibility_mi"))
 
 -- Parsers stolen from xmobar
 
@@ -320,22 +339,26 @@ data WeatherFormatter = WeatherFormatter (WeatherInfo -> String) -- ^ Specify a 
 -- provide a custom function to turn a 'WeatherInfo' into a String via the
 -- 'weatherFormatter' field.
 data WeatherConfig =
-  WeatherConfig { weatherStation :: String   -- ^ The weather station to poll. No default
+  WeatherConfig { weatherCity :: String   -- ^ The weather city to poll. No default
+                , weatherState :: String
                 , weatherTemplate :: String  -- ^ Template string, as described above.  Default: $tempF$ °F
                 , weatherFormatter :: WeatherFormatter -- ^ Default: substitute in all interpolated variables (above)
                 }
 
 -- | A sensible default configuration for the weather widget that just
 -- renders the temperature.
-defaultWeatherConfig :: String -> WeatherConfig
-defaultWeatherConfig station = WeatherConfig { weatherStation = station
-                                             , weatherTemplate = "$tempF$ °F"
-                                             , weatherFormatter = DefaultWeatherFormatter
-                                             }
+defaultWeatherConfig :: (String, String) -> WeatherConfig
+defaultWeatherConfig (city, state) = WeatherConfig { weatherCity = city
+                                                   , weatherState = state
+                                                   , weatherTemplate = "$tempF$ °F"
+                                                   , weatherFormatter = DefaultWeatherFormatter
+                                                   }
+
+w = defaultWeatherConfig ("Philadelphia", "PA")
 
 test :: IO ()
 test = do
-  let url = printf "%s/%s/%s.json" baseUrl ("PA" :: String) ("Philadelphia" :: String)
+  let url = printf "%s/%s/%s.json" baseUrl (weatherState w) (weatherCity w)
       tpl' = newSTMP (weatherTemplate w)
   l <- getCurrentWeather url tpl' w
   putStrLn l
@@ -345,7 +368,7 @@ weatherNew :: WeatherConfig -- ^ Configuration to render
               -> Double     -- ^ Polling period in _minutes_
               -> IO Widget
 weatherNew cfg delayMinutes = do
-  let url = printf "%s/%s.TXT" baseUrl (weatherStation cfg)
+  let url = printf "%s/%s/%s.json" baseUrl (weatherState cfg) (weatherCity cfg)
       tpl' = newSTMP (weatherTemplate cfg)
 
   l <- pollingLabelNew "N/A" (delayMinutes * 60) (getCurrentWeather url tpl' cfg)
