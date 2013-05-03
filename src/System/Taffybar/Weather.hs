@@ -166,88 +166,6 @@ instance FromJSON Weather where
     ((v .: "current_observation") >>= (.: "pressure_in")) <*>
     ((v .: "current_observation") >>= (.: "visibility_mi"))
 
--- Parsers stolen from xmobar
-
-type Parser = Parsec String ()
-
-pTime :: Parser (String, String, String, String)
-pTime = do
-  y <- getNumbersAsString
-  _ <- char '.'
-  m <- getNumbersAsString
-  _ <- char '.'
-  d <- getNumbersAsString
-  _ <- char ' '
-  (h:hh:mi:mimi) <- getNumbersAsString
-  _ <- char ' '
-  return (y, m, d ,[h]++[hh]++":"++[mi]++mimi)
-
-pTemp :: Parser (Int, Int)
-pTemp = do
-  let num = digit <|> char '-' <|> char '.'
-  f <- manyTill num $ char ' '
-  _ <- manyTill anyChar $ char '('
-  c <- manyTill num $ char ' '
-  _ <- skipRestOfLine
-  return (floor (read c :: Double), floor (read f :: Double))
-
-pRh :: Parser Int
-pRh = do
-  s <- manyTill digit (char '%' <|> char '.')
-  return $ read s
-
-pPressure :: Parser Int
-pPressure = do
-  _ <- manyTill anyChar $ char '('
-  s <- manyTill digit $ char ' '
-  _ <- skipRestOfLine
-  return $ read s
-
-parseData :: Parser WeatherInfo
-parseData = do
-  st <- getAllBut ","
-  _ <- space
-  ss <- getAllBut "("
-  _ <- skipRestOfLine >> getAllBut "/"
-  (y,m,d,h) <- pTime
-  w <- getAfterString "Wind: "
-  v <- getAfterString "Visibility: "
-  sk <- getAfterString "Sky conditions: "
-  _ <- skipTillString "Temperature: "
-  (tC,tF) <- pTemp
-  dp <- getAfterString "Dew Point: "
-  _ <- skipTillString "Relative Humidity: "
-  rh <- pRh
-  _ <- skipTillString "Pressure (altimeter): "
-  p <- pPressure
-  _ <- manyTill skipRestOfLine eof
-  return $ WI st ss y m d h w v sk tC tF dp rh p
-
-getAllBut :: String -> Parser String
-getAllBut s =
-    manyTill (noneOf s) (char $ head s)
-
-getAfterString :: String -> Parser String
-getAfterString s = pAfter <|> return ("<" ++ s ++ " not found!>")
-  where
-    pAfter = do
-      _ <- try $ manyTill skipRestOfLine $ string s
-      v <- manyTill anyChar $ newline
-      return v
-
-skipTillString :: String -> Parser String
-skipTillString s =
-    manyTill skipRestOfLine $ string s
-
-getNumbersAsString :: Parser String
-getNumbersAsString = skipMany space >> many1 digit >>= \n -> return n
-
-
-skipRestOfLine :: Parser Char
-skipRestOfLine = do
-  _ <- many $ noneOf "\n\r"
-  newline
-
 
 -- | Simple: download the document at a URL.  Taken from Real World
 -- Haskell.
@@ -281,15 +199,6 @@ getWeather url = do
       Nothing -> return (Left "Decoding JSON failed.")
     Left err -> return (Left (show err))
 
---getWeather :: String -> IO (Either String WeatherInfo)
---getWeather url = do
---  dat <- downloadURL url
---  case dat of
---    Right dat' -> case parse parseData url dat' of
---      Right d -> return (Right d)
---      Left err -> return (Left (show err))
---    Left err -> return (Left (show err))
-
 defaultFormatter :: StringTemplate String -> WeatherInfo -> String
 defaultFormatter tpl wi = render tpl'
   where
@@ -321,10 +230,9 @@ getCurrentWeather url tpl cfg = do
       putStrLn err
       return "N/A"
 
--- | The NOAA URL to get data from
+-- | The wunderground URL to get data from
 baseUrl :: String
 baseUrl = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q"
---baseUrl = "http://weather.noaa.gov/pub/data/observations/metar/decoded"
 
 wunderground = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q/PA/Philadelphia.json"
 
