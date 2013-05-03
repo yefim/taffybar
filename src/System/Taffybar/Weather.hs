@@ -262,15 +262,6 @@ defaultWeatherConfig (city, state) = WeatherConfig { weatherCity = city
                                                    , weatherFormatter = DefaultWeatherFormatter
                                                    }
 
-w = defaultWeatherConfig ("Philadelphia", "PA")
-
-test :: IO ()
-test = do
-  let url = printf "%s/%s/%s.json" baseUrl (weatherState w) (weatherCity w)
-      tpl' = newSTMP (weatherTemplate w)
-  l <- getCurrentWeather url tpl' w
-  putStrLn l
-
 -- | Create a periodically-updating weather widget that polls NOAA.
 weatherNew :: WeatherConfig -- ^ Configuration to render
               -> Double     -- ^ Polling period in _minutes_
@@ -283,3 +274,15 @@ weatherNew cfg delayMinutes = do
 
   widgetShowAll l
   return l
+
+-- Testing for the new integration with the Wunderground API
+-- Adjust the weatherTemplate above to get different results
+w = defaultWeatherConfig ("Boston", "MA")
+
+testWunderground :: IO ()
+testWunderground = do
+  let url = printf "%s/%s/%s.json" baseUrl (weatherState w) (weatherCity w)
+      tpl' = newSTMP (weatherTemplate w)
+  l <- getCurrentWeather url tpl' w
+  putStrLn l
+
