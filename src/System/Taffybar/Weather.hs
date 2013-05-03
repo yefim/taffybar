@@ -103,7 +103,7 @@ data WeatherInfo =
 data Weather =
   Weather { city              :: String
           , state             :: String
-          , observation_time  :: String
+          , local_epoch       :: String
           , temp_f            :: Float
           , temp_c            :: Float
           , weather           :: String
@@ -121,15 +121,16 @@ data Weather =
           , visibility_km     :: String
           } deriving (Show)
 
---WeatherToWI :: Weather -> WeatherInfo
---WeatherToWI (Weather c s o_t )
+weatherToWI :: Weather -> WeatherInfo
+weatherToWI (Weather c st l_e t_f t_c wthr r_h w_d w_deg w_m w_g_m w_k w_g_k dew p_m p_i v_m v_k) =
+             WI c st l_e l_e l_e l_e l_e v_m wthr (round t_c) (round t_f) dew (read $ init r_h) (round $ read p_i)
 
 instance FromJSON Weather where
   parseJSON (Object v) =
     Weather <$>
     ((v .: "current_observation") >>= (.: "display_location") >>= (.: "city")) <*>
     ((v .: "current_observation") >>= (.: "display_location") >>= (.: "state")) <*>
-    ((v .: "current_observation") >>= (.: "observation_time")) <*>
+    ((v .: "current_observation") >>= (.: "local_epoch")) <*>
     ((v .: "current_observation") >>= (.: "temp_f")) <*>
     ((v .: "current_observation") >>= (.: "temp_c")) <*>
     ((v .: "current_observation") >>= (.: "weather")) <*>
@@ -252,23 +253,23 @@ downloadURL url = do
                       }
     Just uri = parseURI url
 
-getWeatherJSON :: String -> IO (Either String Weather)
-getWeatherJSON url = do
-  dat <- downloadURL url
-  case dat of
-    Right dat' -> case decode (BS.pack dat') of
-      Just d -> return (Right d)
-      Nothing -> return (Left "Decoding JSON failed.")
-    Left err -> return (Left (show err))
-
 getWeather :: String -> IO (Either String WeatherInfo)
 getWeather url = do
   dat <- downloadURL url
   case dat of
-    Right dat' -> case parse parseData url dat' of
-      Right d -> return (Right d)
-      Left err -> return (Left (show err))
+    Right dat' -> case decode (BS.pack dat') of
+      Just d -> return (Right $ weatherToWI d)
+      Nothing -> return (Left "Decoding JSON failed.")
     Left err -> return (Left (show err))
+
+--getWeather :: String -> IO (Either String WeatherInfo)
+--getWeather url = do
+--  dat <- downloadURL url
+--  case dat of
+--    Right dat' -> case parse parseData url dat' of
+--      Right d -> return (Right d)
+--      Left err -> return (Left (show err))
+--    Left err -> return (Left (show err))
 
 defaultFormatter :: StringTemplate String -> WeatherInfo -> String
 defaultFormatter tpl wi = render tpl'
@@ -303,7 +304,8 @@ getCurrentWeather url tpl cfg = do
 
 -- | The NOAA URL to get data from
 baseUrl :: String
-baseUrl = "http://weather.noaa.gov/pub/data/observations/metar/decoded"
+baseUrl = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q"
+--baseUrl = "http://weather.noaa.gov/pub/data/observations/metar/decoded"
 
 wunderground = "http://api.wunderground.com/api/7658197eb089bc56/conditions/q/PA/Philadelphia.json"
 
@@ -331,11 +333,9 @@ defaultWeatherConfig station = WeatherConfig { weatherStation = station
                                              , weatherFormatter = DefaultWeatherFormatter
                                              }
 
-w = defaultWeatherConfig "KMSN"
-
 test :: IO ()
 test = do
-  let url = printf "%s/%s.TXT" baseUrl (weatherStation w)
+  let url = printf "%s/%s/%s.json" baseUrl ("PA" :: String) ("Philadelphia" :: String)
       tpl' = newSTMP (weatherTemplate w)
   l <- getCurrentWeather url tpl' w
   putStrLn l
